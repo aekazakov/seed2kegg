@@ -1,0 +1,2 @@
+511145.12	511145	Escherichia coli str. K-12 substr. MG1655	Bacteria,Proteobacteria,Gammaproteobacteria,Enterobacteriales,Enterobacteriaceae,Escherichia,Escherichia coli,Escherichia coli K-12,Escherichia coli str. K-12 substr. MG1655	Bacteria	1
+511145.6	511145	Escherichia coli str. K-12 substr. MG1655	Bacteria,Proteobacteria,Gammaproteobacteria,Enterobacteriales,Enterobacteriaceae,Escherichia,Escherichia coli,Escherichia coli K-12,Escherichia coli str. K-12 substr. MG1655	Bacteria	0
