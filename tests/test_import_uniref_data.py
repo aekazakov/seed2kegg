@@ -33,7 +33,7 @@ class DataImportTest(unittest.TestCase):
         uniref_data_util.import_uniref_fasta(self.cursor, uniref_fasta_file)
         uniref_data_util.create_uniref_proteins_indices(self.cursor)
         self.cursor.execute('SELECT protein_hash FROM uniref_proteins WHERE uniref_id = ?', ('UniRef100_Q92AT0',))
-        self.assertEqual(self.cursor.fetchone()[0], u'9DFB6B4F3808AADB7A95AAA1F5EDE2B2')
+        self.assertEqual(self.cursor.fetchone()[0], u'B2E2EDF5A1AA957ADBAA08384F6BFB9D')
         self.cursor.execute('SELECT COUNT(*) FROM uniref_proteins')
         self.assertEqual(self.cursor.fetchone()[0], 7)
 

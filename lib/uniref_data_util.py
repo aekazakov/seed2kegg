@@ -1,7 +1,8 @@
 #!/usr/bin/python
 
 import sqlite3
-from smhasher import murmur3_x64_128
+#from smhasher import murmur3_x64_128
+import mmh3
 
 '''
 This module contains all the functions needed for load UniRef data into sqlite database. 
@@ -11,7 +12,8 @@ because of large volume of the table.
 
 
 def calculate_sequence_hash(seq):
-    return murmur3_x64_128(seq)
+    #return murmur3_x64_128(seq)
+    return mmh3.hash128(seq)
 
 def drop_tables(cursor):
     cursor.execute('DROP TABLE IF EXISTS uniref_proteins')
@@ -49,7 +51,7 @@ def import_uniref_fasta(cursor, uniref_fasta_file):
                     cursor.executemany('INSERT INTO uniref_proteins \
                     (uniref_id,function,cluster_size,tax,tax_id,rep_id,protein_hash) \
                     VALUES  (?, ?, ?, ?, ?, ?, ?)', uniref_data)
-                    print str(counter) + ' proteins processed'
+                    print (counter,' proteins processed')
                     uniref_data = []
             if line.startswith('>'):
                 if protein_data != []:
@@ -76,5 +78,5 @@ def import_uniref_fasta(cursor, uniref_fasta_file):
     cursor.executemany('INSERT INTO uniref_proteins \
                 (uniref_id,function,cluster_size,tax,tax_id,rep_id,protein_hash) \
                 VALUES  (?, ?, ?, ?, ?, ?, ?)', uniref_data)
-    print str(counter) + ' proteins processed'
+    print (counter,' proteins processed')
     
