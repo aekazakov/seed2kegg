@@ -1,0 +1,53 @@
+ENTRY       K00001                      KO
+NAME        E1.1.1.1, adh
+DEFINITION  alcohol dehydrogenase [EC:1.1.1.1]
+PATHWAY     ko00010  Glycolysis / Gluconeogenesis
+            ko00071  Fatty acid degradation
+            ko00350  Tyrosine metabolism
+            ko00625  Chloroalkane and chloroalkene degradation
+            ko00626  Naphthalene degradation
+            ko00830  Retinol metabolism
+            ko00980  Metabolism of xenobiotics by cytochrome P450
+            ko00982  Drug metabolism - cytochrome P450
+            ko01100  Metabolic pathways
+            ko01110  Biosynthesis of secondary metabolites
+            ko01120  Microbial metabolism in diverse environments
+            ko01130  Biosynthesis of antibiotics
+            ko01220  Degradation of aromatic compounds
+BRITE       KEGG Orthology (KO) [BR:ko00001]
+             Metabolism
+              Carbohydrate metabolism
+               00010 Glycolysis / Gluconeogenesis
+                K00001  E1.1.1.1, adh; alcohol dehydrogenase
+              Lipid metabolism
+               00071 Fatty acid degradation
+                K00001  E1.1.1.1, adh; alcohol dehydrogenase
+              Amino acid metabolism
+               00350 Tyrosine metabolism
+                K00001  E1.1.1.1, adh; alcohol dehydrogenase
+              Metabolism of cofactors and vitamins
+               00830 Retinol metabolism
+                K00001  E1.1.1.1, adh; alcohol dehydrogenase
+              Xenobiotics biodegradation and metabolism
+               00625 Chloroalkane and chloroalkene degradation
+                K00001  E1.1.1.1, adh; alcohol dehydrogenase
+               00626 Naphthalene degradation
+                K00001  E1.1.1.1, adh; alcohol dehydrogenase
+               00980 Metabolism of xenobiotics by cytochrome P450
+                K00001  E1.1.1.1, adh; alcohol dehydrogenase
+               00982 Drug metabolism - cytochrome P450
+                K00001  E1.1.1.1, adh; alcohol dehydrogenase
+            Enzymes [BR:ko01000]
+             1. Oxidoreductases
+              1.1  Acting on the CH-OH group of donors
+               1.1.1  With NAD+ or NADP+ as acceptor
+                1.1.1.1  alcohol dehydrogenase
+                 K00001  E1.1.1.1, adh; alcohol dehydrogenase
+DBLINKS     RN: R00623 R00754 R02124 R04805 R04880 R05233 R05234 R06917 R06927 R07105 R08281 R08306 R08310
+            COG: COG0604 COG1062 COG1064 COG1454
+            GO: 0004022 0004023 0004024 0004025
+GENES       DME: Dmel_CG3481(Adh)
+            TMW: THMA_0107 THMA_0942
+            BCA: BCE_0198 BCE_0877 BCE_1099 BCE_2252 BCE_2604 BCE_3521
+            DML: Dmul_28240(acdA8)
+///

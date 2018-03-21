@@ -1,0 +1,4 @@
+dme	Drosophila melanogaster (fruit fly)	7227	Eukaryota; Metazoa; Ecdysozoa; Arthropoda; Hexapoda; Insecta; Pterygota; Neoptera; Holometabola; Diptera; Brachycera; Muscomorpha; Ephydroidea; Drosophilidae; Drosophila; Sophophora	Eukaryota
+tmw	Thermotoga maritima MSB8	243274	Bacteria; Thermotogae; Thermotogales; Thermotogaceae; Thermotoga	Bacteria
+bca	Bacillus cereus ATCC 10987	222523	Bacteria; Firmicutes; Bacilli; Bacillales; Bacillaceae; Bacillus; Bacillus cereus group	Bacteria
+dml	Desulfococcus multivorans DSM 2059	897	Bacteria; Proteobacteria; Deltaproteobacteria; Desulfobacterales; Desulfobacteraceae; Desulfococcus	Bacteria

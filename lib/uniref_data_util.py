@@ -1,8 +1,8 @@
 #!/usr/bin/python
 
 import sqlite3
-#from smhasher import murmur3_x64_128
 import mmh3
+from lib import db_utils
 
 '''
 This module contains all the functions needed for load UniRef data into sqlite database. 
@@ -12,7 +12,6 @@ because of large volume of the table.
 
 
 def calculate_sequence_hash(seq):
-    #return murmur3_x64_128(seq)
     return mmh3.hash128(seq)
 
 def drop_tables(cursor):
@@ -46,16 +45,16 @@ def import_uniref_fasta(cursor, uniref_fasta_file):
     with open(uniref_fasta_file, 'r') as f:
         for line in f:
             line = line.strip()
-            if counter%10000 == 0:
-                if len(uniref_data) != 0:
-                    cursor.executemany('INSERT INTO uniref_proteins \
-                    (uniref_id,function,cluster_size,tax,tax_id,rep_id,protein_hash) \
-                    VALUES  (?, ?, ?, ?, ?, ?, ?)', uniref_data)
-                    print (counter,' proteins processed')
-                    uniref_data = []
             if line.startswith('>'):
+                if counter%10000 == 0:
+                    if len(uniref_data) != 0:
+                        cursor.executemany('INSERT INTO uniref_proteins \
+                        (uniref_id,function,cluster_size,tax,tax_id,rep_id,protein_hash) \
+                        VALUES  (?, ?, ?, ?, ?, ?, ?)', uniref_data)
+                        print (counter,' proteins processed')
+                        uniref_data = []
                 if protein_data != []:
-                    hash_string = '{:032X}'.format(int(calculate_sequence_hash("".join(protein_seq_lines))))
+                    hash_string = '{:032X}'.format(int(db_utils.calculate_sequence_hash("".join(protein_seq_lines))))
                     protein_data.append(hash_string)
                     uniref_data.append(protein_data)
                     protein_data = []
@@ -72,7 +71,7 @@ def import_uniref_fasta(cursor, uniref_fasta_file):
             else:
                 protein_seq_lines.append(line)
         f.closed
-    hash_string = '{:032X}'.format(int(calculate_sequence_hash("".join(protein_seq_lines))))
+    hash_string = '{:032X}'.format(int(db_utils.calculate_sequence_hash("".join(protein_seq_lines))))
     protein_data.append(hash_string)
     uniref_data.append(protein_data)
     cursor.executemany('INSERT INTO uniref_proteins \
@@ -80,3 +79,5 @@ def import_uniref_fasta(cursor, uniref_fasta_file):
                 VALUES  (?, ?, ?, ?, ?, ?, ?)', uniref_data)
     print (counter,' proteins processed')
     
+if __name__=='__main__':
+    print ('This module should not be executed as script.')

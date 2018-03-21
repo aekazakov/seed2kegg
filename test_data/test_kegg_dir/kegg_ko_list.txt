@@ -1,0 +1,1 @@
+ko:K00001	E1.1.1.1, adh; alcohol dehydrogenase [EC:1.1.1.1]
