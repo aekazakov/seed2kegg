@@ -1,13 +1,14 @@
 #!/usr/bin/python
+import os
 import sqlite3
 import unittest
 from context import lib
 from lib import db_utils
 from lib import uniref_data_util
 
-data_dir = '../test_data/'
-uniref_fasta_file = data_dir + 'test_uniref.faa'
-db_file = data_dir + 'test_uniref.db'
+data_dir = '../test_data'
+uniref_fasta_file = os.path.join(data_dir, 'test_uniref.faa')
+db_file = os.path.join(data_dir, 'test_uniref.db')
 
 class DataImportTest(unittest.TestCase):
 

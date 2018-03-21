@@ -175,6 +175,7 @@ def import_kegg_genes(cursor, genes_file):
     batch_data = []
     with open(genes_file, 'r') as f:
         for line in f:
+            line = line.rstrip()
             if line.startswith('>'):
                 #calculate protein hash and store append it to gene_data
                 if gene_data != []:
@@ -190,7 +191,6 @@ def import_kegg_genes(cursor, genes_file):
                         print (counter, ' genes processed')
                         batch_data = []
                 # find genome_id, gene_id and put them into gene_data
-                line = line.strip()
                 line = line[1:]
                 line = line.replace("'","''")
                 line_tokens = line.split(' ')
@@ -267,7 +267,56 @@ def import_genes2ko_mappings(cursor, kegg_directory):
             gene2ko_mappings = []
         print ('KEGG Orthology group %s imported'%(ko_item[1],))
     create_kegg_genes2ko_index(cursor)
-        
+
+def load_diamond_search_results(cursor,infile, identity_cutoff, mismatch_cutoff):
+    uniref_sql_query = 'SELECT uid FROM uniref_proteins WHERE uniref_id IS ?'
+    kegg_sql_query = 'SELECT kegg_genes.uid FROM kegg_genes JOIN \
+        kegg_genomes ON kegg_genes.kegg_genome_uid = kegg_genomes.uid \
+        WHERE kegg_genomes.kegg_genome_id IS ? \
+        AND kegg_genes.kegg_gene_id_primary IS ? '
+    insert_sql_statement = 'INSERT INTO kegg2uniref_mappings \
+        (kegg_uid, uniref_uid, evidence) VALUES  (?, ?, ?)'
+    
+    kegg2uniref_mappings = []
+    with open(infile, 'r') as f:
+        for line in f.readlines():
+            line = line.rstrip('\n\r')
+            try: 
+                line_tokens = line.split('\t')
+                kegg_unique_id = line_tokens[0]
+                uniref_id = line_tokens[1]
+                identity = line_tokens[2]
+                mismatches= line_tokens[4]
+                kegg_genome,kegg_gene = kegg_unique_id.split(':')
+                if float(identity) >= identity_cutoff:
+                    if int(mismatches) <= mismatch_cutoff:
+                        cursor.execute(uniref_sql_query, (uniref_id,))
+                        data = cursor.fetchall()
+                        uniref_uid = 0
+                        if len(data) == 1:
+                            uniref_uid = data[0][0]
+                        elif len(data) > 1:
+                            print('ERROR: More than one entry for protein %s: check database integrity'%(uniref_id, ))
+                            sys.exit(1)
+                        else:
+                            continue # skip this row if no such proteins in the UniRef database
+                        cursor.execute(kegg_sql_query, (kegg_genome, kegg_gene))
+                        data=cursor.fetchall()
+                        if len(data) == 1:
+                            kegg2uniref_mappings.append((data[0][0], uniref_uid, 'diamond identity ' + identity + '% mismatches ' + mismatches))
+                        elif len(data) > 1:
+                            print('ERROR: More than one entry for gene %s from genome %s: check database integrity'%(gene_id, genome_id))
+                            sys.exit(1)
+                        else:
+                            continue # skip this row if no such genes in the KEGG database
+            except  ValueError:
+                print ('Error in parsing line \"s%\"'%(line,))
+        f.closed
+    if len(kegg2uniref_mappings) != 0:
+        cursor.executemany(insert_sql_statement, kegg2uniref_mappings)
+    create_kegg2uniref_mappings_index(cursor)
+
+
 if __name__=='__main__':
     print ('This module should not be executed as script.')
 

@@ -1,7 +1,6 @@
 #!/usr/bin/python
 
 import sqlite3
-import mmh3
 from lib import db_utils
 
 '''
@@ -10,9 +9,6 @@ All UniRef data are kept in uniref_proteins table in a separate database,
 because of large volume of the table.
 '''
 
-
-def calculate_sequence_hash(seq):
-    return mmh3.hash128(seq)
 
 def drop_tables(cursor):
     cursor.execute('DROP TABLE IF EXISTS uniref_proteins')
