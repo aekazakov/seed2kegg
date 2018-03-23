@@ -132,6 +132,76 @@ def correct_seed_annotations(cursor, infile, comment):
             VALUES (?, ?, ?, ?, ?)'
             cursor.execute(sql_query, (changes[line_number]['gene_uid'], role_uid, now.strftime("%Y-%m-%d %H:%M"), 'added', comment))
 
+def fill_seed2kegg_mappings_table(cursor, infile, identity_cutoff, mismatch_cutoff):
+    ''' This function fills seed2kegg_mappings table from two sources.
+    First, it finds all SEED genes mapped to a UniRef proteins and all KEGG
+    genes mapped to that UniRef protein and writes those pairs into the 
+    table.
+    Second, it imports DIAMOND output for direct comparison of remaining 
+    SEED and KEGG proteins.
+    Databases for KEGG, SEED and UniRef must be attached.       '''
+    insert_sql_statement = 'INSERT INTO seed2kegg_mappings \
+    (seed_uid, kegg_uid, proxy, evidence_seed, evidence_kegg) \
+    SELECT seed2uniref_mappings.seed_uid, kegg2uniref_mappings.kegg_uid, \
+    "UniRef", seed2uniref_mappings.evidence, kegg2uniref_mappings.evidence \
+    FROM seed2uniref_mappings \
+    JOIN uniref_proteins ON seed2uniref_mappings.uniref_uid=uniref_proteins.uid \
+    JOIN kegg2uniref_mappings ON uniref_proteins.uid = kegg2uniref_mappings.uniref_uid'
+    cursor.execute(insert_sql_statement)
+    
+    kegg_sql_query = 'SELECT kegg_genes.uid FROM kegg_genes JOIN \
+        kegg_genomes ON kegg_genes.kegg_genome_uid = kegg_genomes.uid \
+        WHERE kegg_genomes.kegg_genome_id IS ? \
+        AND kegg_genes.kegg_gene_id_primary IS ? '
+    insert_sql_statement = 'INSERT INTO seed2kegg_mappings \
+    (seed_uid, kegg_uid, proxy, evidence_seed, evidence_kegg) \
+    VALUES (?, ?, ?, ?, ?)'
+    
+    seed2kegg_mappings = []
+    with open(infile, 'r') as f:
+        for line in f.readlines():
+            line = line.rstrip('\n\r')
+            try: 
+                line_tokens = line.split('\t')
+                kegg_unique_id = line_tokens[0]
+                seed_id = line_tokens[1]
+                identity = line_tokens[2]
+                mismatches= line_tokens[4]
+                kegg_genome,kegg_gene = kegg_unique_id.split(':')
+                if float(identity) >= identity_cutoff:
+                    if int(mismatches) <= mismatch_cutoff:
+                        cursor.execute(kegg_sql_query, (kegg_genome, kegg_gene))
+                        data=cursor.fetchall()
+                        if len(data) == 1:
+                            seed2kegg_mappings.append((seed_data_util.get_gene_uid(cursor, seed_id), data[0][0], 'direct comparison', 'diamond identity ' + identity + '% mismatches ' + mismatches, ''))
+                        elif len(data) > 1:
+                            raise SystemExit('ERROR: More than one entry for gene %s from genome %s: check database integrity'%(gene_id, genome_id))
+                        else:
+                            continue # skip this row if no such gene in the KEGG database. 
+            except  ValueError:
+                print ('Error in parsing line: ' + line)
+        f.closed
+    if len(seed2kegg_mappings) != 0:
+        cursor.executemany(insert_sql_statement, seed2kegg_mappings)
+    seed_data_util.create_seed2kegg_mappings_index(cursor)
+
+def report_database_statistics(cursor):
+    #Databases for KEGG, SEED and UniRef must be attached.
+    cursor.execute('SELECT COUNT(*) FROM uniref_proteins')
+    print('Total number of UniRef proteins:', cursor.fetchone()[0])
+    cursor.execute('SELECT COUNT(*) FROM seed_genes')
+    print('Total number of SEED genes:', cursor.fetchone()[0])
+    cursor.execute('SELECT COUNT(*) FROM kegg_genes')
+    print('Total number of KEGG genes:', cursor.fetchone()[0])
+    cursor.execute('SELECT COUNT(DISTINCT seed_uid) FROM seed2kegg_mappings')
+    print('Total number of SEED genes mapped to KEGG:', cursor.fetchone()[0])
+    cursor.execute('SELECT COUNT(DISTINCT kegg_uid) FROM seed2kegg_mappings')
+    print('Total number of KEGG genes mapped to SEED:', cursor.fetchone()[0])
+    cursor.execute('SELECT COUNT(DISTINCT seed_genes.uid) FROM seed_genes \
+    JOIN seed_gene2role ON seed_genes.uid = seed_gene2role.seed_gene_uid')
+    print('Total number of SEED genes assigned to functional roles:', cursor.fetchone()[0])
+    
+
 if __name__=='__main__':
     print ('This module should not be executed as script.')
 

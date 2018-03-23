@@ -117,6 +117,16 @@ def create_gene2role_changes_indices(cursor):
     cursor.execute('CREATE INDEX IF NOT EXISTS `seed_gene2role_changes_roleid_1` ON \
     `seed_gene2role_changes` (`seed_role_uid` ASC)')
 
+def create_seed2kegg_mappings_table(cursor):
+    cursor.execute('CREATE TABLE "seed2kegg_mappings" (\
+	`uid`	INTEGER NOT NULL PRIMARY KEY AUTOINCREMENT UNIQUE,\
+	`seed_uid`	INTEGER NOT NULL,\
+	`kegg_uid`	INTEGER NOT NULL,\
+	`proxy`	TEXT NOT NULL,\
+	`evidence_seed`	TEXT NOT NULL,\
+	`evidence_kegg`	TEXT NOT NULL)')
+
+
 def create_tables(cursor):
     create_seed_functional_roles_table(cursor)
     create_seed_genomes_table(cursor)
@@ -150,6 +160,10 @@ def create_seed2uniref_index(cursor):
 def create_seed_genes2roles_index(cursor):
     cursor.execute('CREATE INDEX IF NOT EXISTS `seed_gene2role_geneid_1` ON `seed_gene2role` (`seed_gene_uid` ASC)')
     cursor.execute('CREATE INDEX IF NOT EXISTS `seed_gene2role_roleid_1` ON `seed_gene2role` (`seed_role_uid` ASC)')
+
+def create_seed2kegg_mappings_index(cursor):
+    cursor.execute('CREATE INDEX IF NOT EXISTS `seed2kegg_seedid_1` ON `seed2kegg_mappings` (`seed_uid` ASC)')
+    cursor.execute('CREATE INDEX IF NOT EXISTS `seed2kegg_keggid_1` ON `seed2kegg_mappings` (`kegg_uid` ASC)')
 
 def get_role_uid(cursor, role):
     ret_val = 0
