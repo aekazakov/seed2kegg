@@ -1,0 +1,6 @@
+105	Low-affinity inorganic phosphate transporter	740
+911	Formate hydrogenlyase transcriptional activator	1343
+2800	Maltoporin (maltose/maltodextrin high-affinity receptor, phage lambda receptor protein)	620|851|1363
+4943	Ornithine decarboxylase (EC 4.1.1.17)	771|899|1168
+9487	CRISPR-associated protein, Cas5e family	368|641
+9724	Ribonucleotide reductase of class Ia (aerobic), beta subunit (EC 1.17.4.1)	151|1202
