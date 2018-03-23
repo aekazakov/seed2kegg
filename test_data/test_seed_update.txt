@@ -1,4 +1,4 @@
-Cluster80	Gene	Size	Role	Old annotation	New annotation	Delete from role	Add to role
+#Cluster80	Gene	Size	Role	Old annotation	New annotation	Delete from role	Add to role
 1232454	fig|511145.12.peg.2823	333	911	Formate hydrogenlyase transcriptional activator		911	
-4284732	fig|511145.6.peg.533	333	No roles		Formate hydrogenlyase transcriptional activator		911
-1344824	fig|511145.12.peg.3061	333	4943	Ornithine decarboxylase (EC 4.1.1.17)	Formate hydrogenlyase transcriptional activator,Fumarate hydratase class I, anaerobic (EC 4.2.1.2)	4943	1,911
+4284732	fig|511145.12.peg.3843	333	No roles		Formate hydrogenlyase transcriptional activator		911
+1344824	fig|511145.12.peg.3061	333	4943	Ornithine decarboxylase (EC 4.1.1.17)	Formate hydrogenlyase transcriptional activator,Fumarate hydratase class I, anaerobic (EC 4.2.1.2)	4943	105,911

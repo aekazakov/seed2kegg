@@ -1,14 +1,5 @@
-fig|511145.12.peg.581	UniRef100_P21215	diamond identity 97.7% mismatches 4
-fig|511145.12.peg.4504	UniRef100_P80438	diamond identity 96.7% mismatches 1
-fig|511145.6.peg.533	UniRef100_Q92AT0	diamond identity 99.5% mismatches 2
-fig|511145.12.peg.2854	UniRef100_Q92AT0	diamond identity 100.0% mismatches 0
-fig|511145.12.peg.1650	UniRef100_Q8GBW6	hash values identical
-fig|511145.12.peg.3061	UniRef100_Q8GBW6	diamond identity 99.8% mismatches 1
-fig|511145.12.peg.2823	UniRef100_P16536	diamond identity 99.9% mismatches 1
-fig|511145.6.peg.4463	UniRef100_A6X5T5	diamond identity 99.7% mismatches 1
-fig|511145.12.peg.3082	UniRef100_E7CY70	diamond identity 99.8% mismatches 1
-fig|511145.12.peg.1621	UniRef100_E7CY70	diamond identity 99.3% mismatches 1
-fig|511145.12.peg.4236	UniRef100_E7CY70	diamond identity 97.4% mismatches 1
-fig|511145.12.peg.302	UniRef100_E7CY70	hash values identical
-fig|511145.12.peg.3843	UniRef100_E7CY70	diamond identity 99.8% mismatches 1
-fig|511145.12.peg.2538	UniRef100_E7CY70	diamond identity 98.1% mismatches 1
+fig|511145.12.peg.4236	UniRef100_P21215	diamond identity 97.7% mismatches 4
+fig|511145.12.peg.2854	UniRef100_P80438	diamond identity 96.7% mismatches 1
+fig|511145.12.peg.3082	UniRef100_Q92AT0	diamond identity 99.5% mismatches 2
+fig|511145.12.peg.3061	UniRef100_Q92AT0	diamond identity 100.0% mismatches 0
+fig|511145.12.peg.3843	UniRef100_Q8GBW6	hash values identical

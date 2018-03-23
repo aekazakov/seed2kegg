@@ -102,6 +102,21 @@ def create_seed2uniref_mappings_table(cursor):
 	`uniref_uid`	INTEGER NOT NULL,\
 	`evidence`	TEXT NOT NULL)')
 
+def create_gene2role_changes_table(cursor):
+    cursor.execute('CREATE TABLE IF NOT EXISTS `seed_gene2role_changes` (\
+	`uid`	INTEGER NOT NULL PRIMARY KEY AUTOINCREMENT UNIQUE,\
+	`seed_gene_uid`	INTEGER NOT NULL,\
+	`seed_role_uid`	INTEGER NOT NULL,\
+	`date`	TEXT,\
+	`action`	TEXT NOT NULL,\
+	`comment`	TEXT)')
+
+def create_gene2role_changes_indices(cursor):
+    cursor.execute('CREATE INDEX IF NOT EXISTS `seed_gene2role_changes_geneid_1` ON \
+    `seed_gene2role_changes` (`seed_gene_uid` ASC)')
+    cursor.execute('CREATE INDEX IF NOT EXISTS `seed_gene2role_changes_roleid_1` ON \
+    `seed_gene2role_changes` (`seed_role_uid` ASC)')
+
 def create_tables(cursor):
     create_seed_functional_roles_table(cursor)
     create_seed_genomes_table(cursor)
@@ -136,20 +151,82 @@ def create_seed_genes2roles_index(cursor):
     cursor.execute('CREATE INDEX IF NOT EXISTS `seed_gene2role_geneid_1` ON `seed_gene2role` (`seed_gene_uid` ASC)')
     cursor.execute('CREATE INDEX IF NOT EXISTS `seed_gene2role_roleid_1` ON `seed_gene2role` (`seed_role_uid` ASC)')
 
+def get_role_uid(cursor, role):
+    ret_val = 0
+    sql_query = 'SELECT uid FROM seed_functional_roles WHERE seed_role_id IS ?'
+    cursor.execute(sql_query, (role, ))
+    data=cursor.fetchall()
+    if data is None:
+        raise SystemExit('Patch file validation error: SEED functional role ' + role + ' not found in the database.')
+    elif len(data) == 0:
+        raise SystemExit('Patch file validation error: SEED functional role ' + role + ' not found in the database.')
+    elif len(data) > 1:
+        raise SystemExit('Multiple entries for SEED functional role ' + role + ' were found: ' + ','.join(data) + '. Check database integrity.')
+    else:
+        ret_val = data[0][0]
+    return ret_val
+
+def get_gene_uid(cursor, gene):
+    ret_val = 0
+    sql_query = 'SELECT uid FROM seed_genes WHERE seed_gene_id IS ?'
+    cursor.execute(sql_query, (gene, ))
+    data=cursor.fetchall()
+    if data is None:
+        raise SystemExit('Gene ' + gene + ' not found in the database.')
+    elif len(data) == 0:
+        raise SystemExit('Gene ' + gene + ' not found in the database.')
+    elif len(data) > 1:
+        raise SystemExit('Multiple entries for gene ' + gene + ' were found. Check database integrity.')
+    else:
+        ret_val = data[0][0]
+    return ret_val
+
+def check_gene_to_role_link(cursor, gene_uid, role):
+    ret_val = False
+    sql_query = 'SELECT COUNT(*) FROM seed_gene2role \
+    JOIN seed_functional_roles ON seed_gene2role.seed_role_uid=seed_functional_roles.uid \
+    WHERE seed_gene2role.seed_gene_uid IS ? \
+    AND seed_functional_roles.seed_role_id IS ?'
+    cursor.execute(sql_query, (gene_uid, role))
+    data=cursor.fetchone()
+    if data[0] == 0:
+        return ret_val
+    elif data[0] > 1:
+        raise SystemExit('Multiple links between gene_uid ' + str(gene_uid) + ' and role ' + role + ' were found. Check database integrity.')
+    else:
+        ret_val = True
+    return ret_val
+
+def get_gene2role_info(cursor, gene_uid, role_uid):
+    ret_val = ''
+    sql_query = 'SELECT seed_gene2role.comment FROM seed_gene2role \
+    WHERE seed_gene2role.seed_gene_uid IS ? \
+    AND seed_gene2role.seed_role_uid IS ?'
+    cursor.execute(sql_query, (gene_uid, role_uid))
+    data=cursor.fetchall()
+    if data is None:
+        raise SystemExit('Search for link between gene ' + str(gene_uid) + ' and role_uid ' + str(role_uid) + ' returns None. Check database integrity.')
+    elif len(data) == 0:
+        raise SystemExit('Link between gene ' + str(gene_uid) + ' and role_uid ' + str(role_uid) + ' not found. Check database integrity.')
+    elif len(data) > 1:
+        raise SystemExit('Multiple entries for gene_uid ' + str(gene_uid) + ' and role_uid ' + str(role_uid) + ' were found. Check database integrity.')
+    else:
+        ret_val = data[0][0]
+    return ret_val
+
 def import_seed_functional_roles_table(cursor, seed_roles_file):
     seed_roles_data = []
     with open(seed_roles_file, 'r') as f:
         for line in f:
             if line.startswith('#'):
                 continue # skip comment lines
-            line = line.rstrip()
+            line = line.rstrip('\n\r')
             line = line.replace("'", "''")
             line_tokens = line.split('\t')
             if len(line_tokens) == 3:
                 seed_roles_data.append((line_tokens[0],line_tokens[1]))
             else:
-                print ('Unexpected number of fields in line: ', line)
-                sys.exit(1)
+                raise SystemExit ('Unexpected number of fields in line: ' + line)
     f.closed
     cursor.executemany('INSERT INTO seed_functional_roles(seed_role_id,seed_role_name) VALUES (?, ?)', seed_roles_data)
     create_seed_roles_index(cursor)
@@ -159,7 +236,7 @@ def import_seed_genomes(cursor, seed_genome_file):
     seed_genomes_data = []
     with open(seed_genome_file, 'r') as f:
         for line in f:
-            line = line.rstrip()
+            line = line.rstrip('\n\r')
             line = line.replace("'", "''")
             line_tokens = line.split('\t')
             if len(line_tokens) == 6:
@@ -174,7 +251,6 @@ def import_seed_genomes(cursor, seed_genome_file):
 
 def import_seed_genes(cursor, directory):
     genomes_sql_query = 'SELECT uid, seed_genome_id FROM seed_genomes WHERE latest_version = 1 ORDER BY seed_genome_id ASC'
-    sql_query = 'SELECT uid FROM seed_genomes WHERE seed_genome_id IS ?'
     insert_sql_query = 'INSERT INTO seed_genes (seed_gene_id, \
     seed_genome_uid, protein_hash) VALUES  (?, ?, ?)'
     
@@ -223,7 +299,7 @@ def import_seed_genes_tsv(cursor, seed_gene_file):
                     cursor.executemany(insert_sql_query, genes_data)
                     print (counter, 'genes processed')
                     genes_data = []
-            line = line.rstrip()
+            line = line.rstrip('\n\r')
             line = line.replace("'","''")
             line_tokens = line.split('\t')
             gene_id = line_tokens[0]
@@ -255,7 +331,6 @@ def import_seed_gene2roles_mapping(cursor, directory, comment):
         (seed_gene_uid, seed_role_uid, comment) \
         VALUES  (?, ?, ?)'
     roles_sql_query = 'SELECT uid,seed_role_id FROM seed_functional_roles ORDER BY seed_role_id ASC'
-    gene_sql_query = 'SELECT uid FROM seed_genes WHERE seed_gene_id IS ?'
 
     cursor.execute(roles_sql_query)
     roles_list = cursor.fetchall()
@@ -264,14 +339,8 @@ def import_seed_gene2roles_mapping(cursor, directory, comment):
         mappings_data = []
         with open(os.path.join(directory,role_data[1] + '_role.txt'), 'r') as f:
             for line in f:
-                line = line.rstrip()
-                cursor.execute(gene_sql_query,(line,))
-                data=cursor.fetchall()
-                if len(data) == 1:
-                    seed_uid = data[0][0]
-                    mappings_data.append((seed_uid, role_data[0], comment))
-                elif len(data) > 1:
-                    print('More than one entry found for SEED gene %s. Check database integrity.'%(line))
+                line = line.rstrip('\n\r')
+                mappings_data.append((get_gene_uid(cursor,line), role_data[0], comment))
             f.closed
         if len(mappings_data) != 0: 
             cursor.executemany(insert_sql_statement, mappings_data)
@@ -284,9 +353,6 @@ def import_seed_gene2roles_mapping_tsv(cursor, seed_gene2roles_file, comment):
     insert_sql_statement = 'INSERT INTO seed_gene2role \
         (seed_gene_uid, seed_role_uid, comment) \
         VALUES  (?, ?, ?)'
-    
-    gene_sql_query = 'SELECT uid FROM seed_genes WHERE seed_gene_id IS ?'
-    role_sql_query = 'SELECT uid FROM seed_functional_roles WHERE seed_role_id IS ?'
     counter = 0
     mappings_data = []
     
@@ -297,27 +363,12 @@ def import_seed_gene2roles_mapping_tsv(cursor, seed_gene2roles_file, comment):
                     cursor.executemany(insert_sql_statement, mappings_data)
                     print (counter, 'mappings imported')
                     mappings_data = []
-            line = line.rstrip()
+            line = line.rstrip('\n\r')
             line_tokens = line.split('\t')
             if len(line_tokens) == 2:
                 seed_id = line_tokens[0]
                 role_id = line_tokens[1]
-                # Find SEED gene uid
-                cursor.execute(gene_sql_query,(seed_id,))
-                data=cursor.fetchall()
-                if len(data) == 1:
-                    seed_uid = data[0][0]
-                    # Find SEED role uid
-                    cursor.execute(role_sql_query, (role_id,))
-                    data=cursor.fetchall()
-                    if len(data) == 1:
-                        role_uid = data[0][0]
-                        mappings_data.append((seed_uid, role_uid, comment))
-                        counter += 1
-                    elif len(data) > 1:
-                        print('More than one entry found for SEED functional role %s. Check database integrity.'%(role_id))
-                elif len(data) > 1:
-                    print('More than one entry found for SEED gene %s. Check database integrity.'%(seed_id))
+                mappings_data.append((get_gene_uid(cursor, seed_id), get_role_uid(cursor, role_id), comment))
             else:
                 print('Parsing error: ', line)
         f.closed
@@ -368,41 +419,31 @@ def import_seed_clusters(cursor, seed_gene_file):
                     cursor.executemany(insert_sql_statement, clusters_data)
                     print (counter + 'mappings imported')
                     clusters_data = []
-            line = line.rstrip()
+            line = line.rstrip('\n\r')
             line = line.replace("'","''")
             line_tokens = line.split('\t')
             if len(line_tokens) > 3:
                 gene_id = line_tokens[0]
                 cluster_id = line_tokens[2]
-                #check if the gene exists in the database
-                cursor.execute(geneuid_sql_query, (gene_id,))
+                gene_uid = get_gene_uid(cursor, gene_id)
+                cluster_uid = 0
+                cursor.execute(clusteruid_sql_query,(cluster_id,))
                 data=cursor.fetchall()
                 if len(data) == 1:
-                    gene_uid = data[0]
-                    #check if cluster exists in the database
-                    cluster_uid = 0
-                    sql_query = ''
-                    cursor.execute(clusteruid_sql_query,(cluster_id,))
-                    data=cursor.fetchall()
-                    if len(data) == 1:
-                        cluster_uid = data[0]
-                        clusters_data.append((gene_uid, cluster_uid))
-                        counter += 1
-                    elif len(data) > 1:
-                        print('More than one entry found for cluster %s. Check database integrity.'%(cluster_id))
-                        sys.exit(1)
+                    cluster_uid = data[0][0]
+                    clusters_data.append((gene_uid, cluster_uid))
+                    counter += 1
                 elif len(data) > 1:
-                    print('More than one entry found for gene %s. Check database integrity.'%(gene_id))
-                    sys.exit(1)
+                    raise SystemExit('More than one entry found for cluster %s. Check database integrity.'%(cluster_id))
         f.closed
     if len(clusters_data) != 0:
         cursor.executemany(insert_sql_statement, clusters_data)
         print (counter + 'mappings imported')
     create_seed_genes2clusters_index(cursor)
 
+# deprecated
 def import_seed2uniref_mappings(cursor, seed_genes2uniref_file):
     uniref_sql_query = 'SELECT uid FROM uniref_proteins WHERE uniref_id IS ?'
-    seed_sql_query = 'SELECT uid FROM seed_genes WHERE seed_gene_id IS ?'
     insert_sql_statement = 'INSERT INTO seed2uniref_mappings \
         (seed_uid, uniref_uid, evidence) VALUES  (?, ?, ?)'
     
@@ -419,21 +460,15 @@ def import_seed2uniref_mappings(cursor, seed_genes2uniref_file):
             line = line.strip()
             line = line.replace("'","''")
             seed_id, uniref_id, evidence = line.split('\t')
-            cursor.execute(seed_sql_query,(seed_id,))
+            seed_uid = get_gene_uid(cursor, seed_id)
+            uniref_uid = 0
+            cursor.execute(uniref_sql_query,(uniref_id,))
             data=cursor.fetchall()
             if len(data) == 1:
-                seed_uid = data[0][0]
-                uniref_uid = 0
-                cursor.execute(uniref_sql_query,(uniref_id,))
-                data=cursor.fetchall()
-                if len(data) == 1:
-                    mappings_data.append((seed_uid, data[0][0], evidence))
-                    counter += 1
-                elif len(data) > 1:
-                    print('More than one entry found for UniRef gene %s. Check database integrity.'%(uniref_id))
+                mappings_data.append((seed_uid, data[0][0], evidence))
+                counter += 1
             elif len(data) > 1:
-                print('More than one entry found for SEED gene %s. Check database integrity.'%(seed_id))
-                
+                print('More than one entry found for UniRef gene %s. Check database integrity.'%(uniref_id))
         f.closed
     if len(mappings_data) != 0:
         cursor.executemany(insert_sql_statement, mappings_data)
@@ -442,8 +477,6 @@ def import_seed2uniref_mappings(cursor, seed_genes2uniref_file):
 
 def load_diamond_search_results(cursor,infile, identity_cutoff, mismatch_cutoff):
     uniref_sql_query = 'SELECT uid FROM uniref_proteins WHERE uniref_id IS ?'
-    seed_sql_query = 'SELECT seed_genes.uid FROM seed_genes \
-        WHERE seed_genes.seed_gene_id IS ? '
     insert_sql_statement = 'INSERT INTO seed2uniref_mappings \
         (seed_uid, uniref_uid, evidence) VALUES  (?, ?, ?)'
     
@@ -464,20 +497,9 @@ def load_diamond_search_results(cursor,infile, identity_cutoff, mismatch_cutoff)
                         uniref_uid = 0
                         if len(data) == 1:
                             uniref_uid = data[0][0]
+                            seed2uniref_mappings.append((get_gene_uid(cursor, seed_id), uniref_uid, 'diamond identity ' + identity + '% mismatches ' + mismatches))
                         elif len(data) > 1:
-                            print('ERROR: More than one entry for protein %s: check database integrity'%(uniref_id, ))
-                            sys.exit(1)
-                        else:
-                            continue # skip this row if no such proteins in the UniRef database
-                        cursor.execute(seed_sql_query, (seed_id, ))
-                        data=cursor.fetchall()
-                        if len(data) == 1:
-                            seed2uniref_mappings.append((data[0][0], uniref_uid, 'diamond identity ' + identity + '% mismatches ' + mismatches))
-                        elif len(data) > 1:
-                            print('ERROR: More than one entry for SEED gene %s: check database integrity'%(seed_id))
-                            sys.exit(1)
-                        else:
-                            continue # skip this row if no such genes in the KEGG database
+                            raise SystemExit('ERROR: More than one entry for protein %s: check database integrity'%(uniref_id, ))
             except  ValueError:
                 print ('Error in parsing line \"s%\"'%(line,))
         f.closed

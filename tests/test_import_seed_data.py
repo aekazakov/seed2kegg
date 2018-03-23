@@ -16,11 +16,9 @@ seed_gene_dir = os.path.join(data_dir, 'test_seed_dir')
 seed_gene2roles_dir = os.path.join(data_dir, 'test_seed_dir')
 seed_diamond_file = os.path.join(data_dir, 'test_diamond_output_seed.txt')
 
-seed_gene_file = os.path.join(data_dir, 'test_seed_genes.txt')
-seed_gene2roles_file = os.path.join(data_dir, 'test_seed_genes2roles.txt')
 seed_genes2uniref_file = os.path.join(data_dir, 'test_seed_genes2uniref.txt')
 db_file = os.path.join(data_dir, 'test_seed.db')
-# Accessory files for testing SEED-to UniRef mappings import
+# Accessory files for testing SEED-to-UniRef mappings import
 uniref_fasta_file = os.path.join(data_dir, 'test_uniref.faa')
 uniref_db_file = os.path.join(data_dir, 'test_kegg_mappings_uniref.db')
 
@@ -133,7 +131,7 @@ class DataImportTest(unittest.TestCase):
         seed_data_util.import_seed2uniref_mappings(self.cursor, seed_genes2uniref_file)
         
         self.cursor.execute('SELECT COUNT(*) FROM seed2uniref_mappings')
-        self.assertEqual(self.cursor.fetchone()[0], 6)
+        self.assertEqual(self.cursor.fetchone()[0], 5)
 
 
     def tearDown(self):
