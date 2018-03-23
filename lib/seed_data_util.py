@@ -140,6 +140,8 @@ def import_seed_functional_roles_table(cursor, seed_roles_file):
     seed_roles_data = []
     with open(seed_roles_file, 'r') as f:
         for line in f:
+            if line.startswith('#'):
+                continue # skip comment lines
             line = line.rstrip()
             line = line.replace("'", "''")
             line_tokens = line.split('\t')
@@ -171,7 +173,7 @@ def import_seed_genomes(cursor, seed_genome_file):
     print (len(seed_genomes_data), ' SEED genomes imported')
 
 def import_seed_genes(cursor, directory):
-    genomes_sql_query = 'SELECT uid, seed_genome_id FROM seed_genomes WHERE latest_version = 1'
+    genomes_sql_query = 'SELECT uid, seed_genome_id FROM seed_genomes WHERE latest_version = 1 ORDER BY seed_genome_id ASC'
     sql_query = 'SELECT uid FROM seed_genomes WHERE seed_genome_id IS ?'
     insert_sql_query = 'INSERT INTO seed_genes (seed_gene_id, \
     seed_genome_uid, protein_hash) VALUES  (?, ?, ?)'
@@ -179,12 +181,11 @@ def import_seed_genes(cursor, directory):
     cursor.execute(genomes_sql_query)
     genomes_list = cursor.fetchall()
     
-    counter = 0
-    genes_data = []
-    gene_data = []
-    protein_seq_lines = []
-
     for genome_data in genomes_list:
+        genes_data = []
+        gene_data = []
+        protein_seq_lines = []
+        print ('Importing genes from genome', genome_data[1])
         with open(os.path.join(directory,genome_data[1] + '_proteins.txt'), 'r') as f:
             for line in f:
                 line = line.strip()
@@ -253,18 +254,14 @@ def import_seed_gene2roles_mapping(cursor, directory, comment):
     insert_sql_statement = 'INSERT INTO seed_gene2role \
         (seed_gene_uid, seed_role_uid, comment) \
         VALUES  (?, ?, ?)'
-    roles_sql_query = 'SELECT uid,seed_role_id FROM seed_functional_roles'
-    
-    
+    roles_sql_query = 'SELECT uid,seed_role_id FROM seed_functional_roles ORDER BY seed_role_id ASC'
     gene_sql_query = 'SELECT uid FROM seed_genes WHERE seed_gene_id IS ?'
 
-    counter = 0
-    mappings_data = []
-    
     cursor.execute(roles_sql_query)
     roles_list = cursor.fetchall()
 
     for role_data in roles_list:
+        mappings_data = []
         with open(os.path.join(directory,role_data[1] + '_role.txt'), 'r') as f:
             for line in f:
                 line = line.rstrip()
@@ -273,14 +270,14 @@ def import_seed_gene2roles_mapping(cursor, directory, comment):
                 if len(data) == 1:
                     seed_uid = data[0][0]
                     mappings_data.append((seed_uid, role_data[0], comment))
-                    counter += 1
                 elif len(data) > 1:
                     print('More than one entry found for SEED gene %s. Check database integrity.'%(line))
             f.closed
         if len(mappings_data) != 0: 
             cursor.executemany(insert_sql_statement, mappings_data)
-            print (counter, 'mappings imported')
-            mappings_data = []
+            print (role_data[1], ':', len(mappings_data), 'mappings imported')
+        else:
+            print (role_data[1], ':', 'no mappings found')
     create_seed_genes2roles_index(cursor)
 
 def import_seed_gene2roles_mapping_tsv(cursor, seed_gene2roles_file, comment):
@@ -486,7 +483,7 @@ def load_diamond_search_results(cursor,infile, identity_cutoff, mismatch_cutoff)
         f.closed
     if len(seed2uniref_mappings) != 0:
         cursor.executemany(insert_sql_statement, seed2uniref_mappings)
-    create_seed2uniref_mappings_index(cursor)
+    create_seed2uniref_index(cursor)
 
 
 if __name__=='__main__':

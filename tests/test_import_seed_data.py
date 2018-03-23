@@ -14,7 +14,7 @@ seed_roles_file = os.path.join(data_dir, 'test_seed_roles_list.txt')
 seed_genome_file = os.path.join(data_dir, 'test_seed_genomes.txt')
 seed_gene_dir = os.path.join(data_dir, 'test_seed_dir')
 seed_gene2roles_dir = os.path.join(data_dir, 'test_seed_dir')
-
+seed_diamond_file = os.path.join(data_dir, 'test_diamond_output_seed.txt')
 
 seed_gene_file = os.path.join(data_dir, 'test_seed_genes.txt')
 seed_gene2roles_file = os.path.join(data_dir, 'test_seed_genes2roles.txt')
@@ -74,14 +74,14 @@ class DataImportTest(unittest.TestCase):
         self.cursor.execute('SELECT tax_id FROM seed_genomes WHERE seed_genome_id IS ?', ('511145.12',))
         self.assertEqual(self.cursor.fetchone()[0], u'511145')
         self.cursor.execute('SELECT COUNT(*) FROM seed_genomes')
-        self.assertEqual(self.cursor.fetchone()[0], 2)
+        self.assertEqual(self.cursor.fetchone()[0], 4)
 
     def test_import_seed_genes(self):
         seed_data_util.create_tables(self.cursor)
         seed_data_util.import_seed_genomes(self.cursor, seed_genome_file)
         seed_data_util.import_seed_genes(self.cursor, seed_gene_dir)
         self.cursor.execute('SELECT COUNT(*) FROM seed_genes')
-        self.assertEqual(self.cursor.fetchone()[0], 6)
+        self.assertEqual(self.cursor.fetchone()[0], 8)
 
     def test_import_seed_gene2roles_mapping(self):
         seed_data_util.create_tables(self.cursor)
@@ -105,8 +105,21 @@ class DataImportTest(unittest.TestCase):
         data_analysis.find_seed2uniref_identical_mappings(self.cursor)
         
         self.cursor.execute('SELECT COUNT(*) FROM seed2uniref_mappings')
-        self.assertEqual(self.cursor.fetchone()[0], 6)
+        self.assertEqual(self.cursor.fetchone()[0], 2)
 
+    def test_load_diamond_search_results(self):
+        seed_data_util.create_tables(self.cursor)
+        seed_data_util.create_seed2uniref_mappings_table(self.cursor)
+        uniref_data_util.create_uniref_proteins_table(self.cursor)
+        uniref_data_util.import_uniref_fasta(self.cursor, uniref_fasta_file)
+        uniref_data_util.create_uniref_proteins_indices(self.cursor)
+
+        seed_data_util.import_seed_genomes(self.cursor, seed_genome_file)
+        seed_data_util.import_seed_genes(self.cursor, seed_gene_dir)
+        seed_data_util.load_diamond_search_results(self.cursor,seed_diamond_file, 95.0, 5)
+        
+        self.cursor.execute('SELECT COUNT(*) FROM seed2uniref_mappings')
+        self.assertEqual(self.cursor.fetchone()[0], 3)
 
     def test_import_seed2uniref_mappings(self):
         seed_data_util.create_tables(self.cursor)

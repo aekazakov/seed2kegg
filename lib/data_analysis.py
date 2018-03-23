@@ -55,6 +55,9 @@ def find_seed2uniref_identical_mappings(cursor):
     if len(uniref2seed_mappings) != 0:
         cursor.executemany(insert_sql_statement, uniref2seed_mappings)
 
+def correct_seed_annotations(cursor, infile):
+    pass
+
 if __name__=='__main__':
     print ('This module should not be executed as script.')
 
