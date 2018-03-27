@@ -33,6 +33,10 @@ def drop_seed2uniref_mappings_table(cursor):
     print ('Dropping seed2uniref_mappings table...')
     cursor.execute('DROP TABLE IF EXISTS seed2uniref_mappings')
 
+def drop_seed2kegg_mappings_table(cursor):
+    print ('Dropping seed2kegg_mappings_mappings table...')
+    cursor.execute('DROP TABLE IF EXISTS seed2kegg_mappings')
+
 def drop_seed2uniref_mappings_indices(cursor):
     print ('Dropping seed2uniref_mappings table...')
     cursor.execute('DROP INDEX IF EXISTS seed2uniref_seedid_1')
@@ -52,14 +56,14 @@ def drop_all_indices(cursor):
     cursor.execute('DROP INDEX IF EXISTS seed_gene2role_roleid_1')
 
 def create_seed_functional_roles_table(cursor):
-    cursor.execute('CREATE TABLE "seed_functional_roles" (\
+    cursor.execute('CREATE TABLE IF NOT EXISTS `seed_functional_roles` (\
 	`uid`	INTEGER NOT NULL PRIMARY KEY AUTOINCREMENT UNIQUE,\
 	`seed_role_id`	TEXT NOT NULL UNIQUE,\
 	`seed_role_name`	TEXT NOT NULL UNIQUE,\
 	`seed_role_category`	TEXT)')
 
 def create_seed_genomes_table(cursor):
-    cursor.execute('CREATE TABLE "seed_genomes" (\
+    cursor.execute('CREATE TABLE IF NOT EXISTS `seed_genomes` (\
 	`uid`	INTEGER NOT NULL PRIMARY KEY AUTOINCREMENT UNIQUE,\
 	`seed_genome_id`	TEXT NOT NULL UNIQUE,\
 	`tax_id`	TEXT,\
@@ -69,34 +73,34 @@ def create_seed_genomes_table(cursor):
 	`kingdom`	TEXT)')
 
 def create_seed_genes_table(cursor):
-    cursor.execute('CREATE TABLE "seed_genes" (\
+    cursor.execute('CREATE TABLE IF NOT EXISTS `seed_genes` (\
 	`uid`	INTEGER NOT NULL PRIMARY KEY AUTOINCREMENT UNIQUE,\
 	`seed_gene_id`	TEXT NOT NULL UNIQUE,\
 	`seed_genome_uid`	INTEGER NOT NULL,\
 	`protein_hash`	TEXT)')
 
 def create_seed_cluster100_table(cursor):
-    cursor.execute('CREATE TABLE `seed_cluster100` (\
+    cursor.execute('CREATE TABLE IF NOT EXISTS `seed_cluster100` (\
 	`uid`	INTEGER NOT NULL PRIMARY KEY AUTOINCREMENT UNIQUE,\
 	`cluster_id`	TEXT NOT NULL UNIQUE,\
 	`ref_gene`	TEXT NOT NULL UNIQUE,\
 	`n`	INTEGER NOT NULL)')
 
 def create_seed_gene2cluster100_table(cursor):
-    cursor.execute('CREATE TABLE `seed_gene2cluster100` (\
+    cursor.execute('CREATE TABLE IF NOT EXISTS `seed_gene2cluster100` (\
 	`uid`	INTEGER NOT NULL PRIMARY KEY AUTOINCREMENT UNIQUE,\
 	`seed_gene_uid`	INTEGER NOT NULL,\
 	`seed_cluster100_uid`	INTEGER NOT NULL)')
 
 def create_seed_gene2role_table(cursor):
-    cursor.execute('CREATE TABLE "seed_gene2role" (\
+    cursor.execute('CREATE TABLE IF NOT EXISTS `seed_gene2role` (\
 	`uid`	INTEGER NOT NULL PRIMARY KEY AUTOINCREMENT UNIQUE,\
 	`seed_gene_uid`	INTEGER NOT NULL,\
 	`seed_role_uid`	INTEGER NOT NULL,\
 	`comment`	TEXT)')
 
 def create_seed2uniref_mappings_table(cursor):
-    cursor.execute('CREATE TABLE "seed2uniref_mappings" (\
+    cursor.execute('CREATE TABLE IF NOT EXISTS `seed2uniref_mappings` (\
 	`uid`	INTEGER NOT NULL PRIMARY KEY AUTOINCREMENT UNIQUE,\
 	`seed_uid`	INTEGER NOT NULL,\
 	`uniref_uid`	INTEGER NOT NULL,\
@@ -148,6 +152,7 @@ def create_seed_clusters_index(cursor):
 def create_seed_genes_index(cursor):
     cursor.execute('CREATE UNIQUE INDEX IF NOT EXISTS `seed_genes_geneid_1` ON `seed_genes` (`seed_gene_id` ASC)')
     cursor.execute('CREATE INDEX IF NOT EXISTS `seed_genes_genomeid_1` ON `seed_genes` (`seed_genome_uid` ASC)')
+    cursor.execute('CREATE INDEX IF NOT EXISTS `seed_genes_proteinhash_1` ON `seed_genes` (`protein_hash` ASC)')
 
 def create_seed_genes2clusters_index(cursor):
     cursor.execute('CREATE INDEX IF NOT EXISTS `seed_gene2cluster100_clusterid_1` ON `seed_gene2cluster100` (`seed_cluster100_uid` ASC)')
@@ -186,13 +191,30 @@ def get_gene_uid(cursor, gene):
     cursor.execute(sql_query, (gene, ))
     data=cursor.fetchall()
     if data is None:
-        raise SystemExit('Gene ' + gene + ' not found in the database.')
+        pass
+        # raise SystemExit('Gene ' + gene + ' not found in the database.')
     elif len(data) == 0:
-        raise SystemExit('Gene ' + gene + ' not found in the database.')
+        pass
+        # raise SystemExit('Gene ' + gene + ' not found in the database.')
     elif len(data) > 1:
         raise SystemExit('Multiple entries for gene ' + gene + ' were found. Check database integrity.')
     else:
         ret_val = data[0][0]
+    return ret_val
+
+def is_latest_genome_version(cursor, genome_id):
+    ret_val = False
+    sql_query = 'SELECT latest_version FROM seed_genomes WHERE seed_genomes.seed_genome_id = ?'
+    cursor.execute(sql_query, (genome_id, ))
+    data=cursor.fetchone()
+    if data is None:
+        raise SystemExit('Genome not found: ' + genome_id)
+    elif data[0] ==  1:
+        ret_val = True
+    elif data[0] ==  0:
+        ret_val = False
+    else:
+        raise SystemExit('ERROR: latest_version field in the database should contain either 1 or 0. Returned value: ' + str(data[0]))
     return ret_val
 
 def check_gene_to_role_link(cursor, gene_uid, role):
@@ -241,7 +263,7 @@ def import_seed_functional_roles_table(cursor, seed_roles_file):
                 seed_roles_data.append((line_tokens[0],line_tokens[1]))
             else:
                 raise SystemExit ('Unexpected number of fields in line: ' + line)
-    f.closed
+        f.closed
     cursor.executemany('INSERT INTO seed_functional_roles(seed_role_id,seed_role_name) VALUES (?, ?)', seed_roles_data)
     create_seed_roles_index(cursor)
     print (len(seed_roles_data), 'SEED functional roles imported')
@@ -257,7 +279,7 @@ def import_seed_genomes(cursor, seed_genome_file):
                 seed_genomes_data.append(line_tokens)
             else:
                 print ('Unexpected number of fields in line: ', line)
-    f.closed
+        f.closed
     cursor.executemany('INSERT INTO seed_genomes(seed_genome_id,\
     tax_id, genome_name, lineage, kingdom, latest_version) VALUES (?, ?, ?, ?, ?, ?)', seed_genomes_data)
     create_seed_genomes_index(cursor)
@@ -504,16 +526,19 @@ def load_diamond_search_results(cursor,infile, identity_cutoff, mismatch_cutoff)
                 uniref_id = line_tokens[1]
                 identity = line_tokens[2]
                 mismatches= line_tokens[4]
-                if float(identity) >= identity_cutoff:
-                    if int(mismatches) <= mismatch_cutoff:
-                        cursor.execute(uniref_sql_query, (uniref_id,))
-                        data = cursor.fetchall()
-                        uniref_uid = 0
-                        if len(data) == 1:
-                            uniref_uid = data[0][0]
-                            seed2uniref_mappings.append((get_gene_uid(cursor, seed_id), uniref_uid, 'diamond identity ' + identity + '% mismatches ' + mismatches))
-                        elif len(data) > 1:
-                            raise SystemExit('ERROR: More than one entry for protein %s: check database integrity'%(uniref_id, ))
+                if float(identity) < identity_cutoff:
+                    if int(mismatches) > mismatch_cutoff:
+                        continue
+                cursor.execute(uniref_sql_query, (uniref_id,))
+                data = cursor.fetchall()
+                uniref_uid = 0
+                if len(data) == 1:
+                    uniref_uid = data[0][0]
+                    genome_id = seed_id[4:].split('.peg')[0]
+                    if is_latest_genome_version(cursor, genome_id):
+                        seed2uniref_mappings.append((get_gene_uid(cursor, seed_id), uniref_uid, 'diamond identity ' + identity + '% mismatches ' + mismatches))
+                elif len(data) > 1:
+                    raise SystemExit('ERROR: More than one entry for protein %s: check database integrity'%(uniref_id, ))
             except  ValueError:
                 print ('Error in parsing line \"s%\"'%(line,))
         f.closed

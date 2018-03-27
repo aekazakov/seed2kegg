@@ -1,0 +1,5 @@
+#Test file
+SEED	105	Test_name1	Test category 1	Low-affinity inorganic phosphate transporter
+SEED	911	Test_name2	Test category 1	Formate hydrogenlyase transcriptional activator
+SEED	2800	Test_name3	Test category 2	Maltoporin (maltose/maltodextrin high-affinity receptor, phage lambda receptor protein)
+KEGG	K00001	Test_name1	Test category 1	E1.1.1.1, adh; alcohol dehydrogenase [EC:1.1.1.1]

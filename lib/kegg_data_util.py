@@ -62,13 +62,13 @@ def drop_indices(cursor):
     cursor.execute('DROP INDEX IF EXISTS kegg2uniref_unirefid_1')
 
 def create_kegg_orthologs_table(cursor):
-    cursor.execute('CREATE TABLE `kegg_orthologs` (\
+    cursor.execute('CREATE TABLE IF NOT EXISTS `kegg_orthologs` (\
 	`uid`	INTEGER NOT NULL PRIMARY KEY AUTOINCREMENT UNIQUE,\
 	`ko_id`	TEXT NOT NULL UNIQUE,\
 	`ko_name`	TEXT NOT NULL)')
 
 def create_kegg_genomes_table(cursor):
-    cursor.execute('CREATE TABLE `kegg_genomes` (\
+    cursor.execute('CREATE TABLE IF NOT EXISTS `kegg_genomes` (\
     `uid` INTEGER NOT NULL PRIMARY KEY AUTOINCREMENT UNIQUE, \
     `kegg_genome_id`TEXT NOT NULL UNIQUE, \
     `kegg_genome_name` TEXT NOT NULL, \
@@ -77,7 +77,7 @@ def create_kegg_genomes_table(cursor):
     `kingdom` TEXT)')
 
 def create_kegg_genes_table(cursor):
-    cursor.execute('CREATE TABLE `kegg_genes` (\
+    cursor.execute('CREATE TABLE IF NOT EXISTS `kegg_genes` (\
 	`uid`	INTEGER NOT NULL PRIMARY KEY AUTOINCREMENT UNIQUE,\
 	`kegg_gene_id_primary`	TEXT NOT NULL,\
 	`kegg_gene_id_full`	TEXT NOT NULL,\
@@ -86,13 +86,13 @@ def create_kegg_genes_table(cursor):
     UNIQUE (kegg_gene_id_full, kegg_genome_uid) ON CONFLICT REPLACE)')
 
 def create_kegg_genes2ko_table(cursor):
-    cursor.execute('CREATE TABLE `kegg_genes2ko` (\
+    cursor.execute('CREATE TABLE IF NOT EXISTS `kegg_genes2ko` (\
 	`uid`	INTEGER NOT NULL PRIMARY KEY AUTOINCREMENT UNIQUE,\
 	`kegg_gene_uid`	INTEGER NOT NULL,\
 	`kegg_ko_uid`	INTEGER NOT NULL)')
 
 def create_kegg2uniref_mappings_table(cursor):
-    cursor.execute('CREATE TABLE "kegg2uniref_mappings" (\
+    cursor.execute('CREATE TABLE IF NOT EXISTS `kegg2uniref_mappings` (\
 	`uid`	INTEGER NOT NULL PRIMARY KEY AUTOINCREMENT UNIQUE,\
 	`kegg_uid`	INTEGER NOT NULL,\
 	`uniref_uid`	INTEGER NOT NULL,\
@@ -269,6 +269,12 @@ def import_genes2ko_mappings(cursor, kegg_directory):
     create_kegg_genes2ko_index(cursor)
 
 def load_diamond_search_results(cursor,infile, identity_cutoff, mismatch_cutoff):
+    ''' This function reads DIAMOND ouput and selects meaningful hits
+    of KEGG protein aligned to UniRef. Good hits must have identity at or 
+    given threshold AND number of mismatches higher than the given 
+    mismatch_cutoff. There are two cutoffs because a pair of short 
+    proteins may have low overall identity but still be true orthologs.
+    '''
     uniref_sql_query = 'SELECT uid FROM uniref_proteins WHERE uniref_id IS ?'
     kegg_sql_query = 'SELECT kegg_genes.uid FROM kegg_genes JOIN \
         kegg_genomes ON kegg_genes.kegg_genome_uid = kegg_genomes.uid \
@@ -288,27 +294,28 @@ def load_diamond_search_results(cursor,infile, identity_cutoff, mismatch_cutoff)
                 identity = line_tokens[2]
                 mismatches= line_tokens[4]
                 kegg_genome,kegg_gene = kegg_unique_id.split(':')
-                if float(identity) >= identity_cutoff:
-                    if int(mismatches) <= mismatch_cutoff:
-                        cursor.execute(uniref_sql_query, (uniref_id,))
-                        data = cursor.fetchall()
-                        uniref_uid = 0
-                        if len(data) == 1:
-                            uniref_uid = data[0][0]
-                        elif len(data) > 1:
-                            print('ERROR: More than one entry for protein %s: check database integrity'%(uniref_id, ))
-                            sys.exit(1)
-                        else:
-                            continue # skip this row if no such proteins in the UniRef database
-                        cursor.execute(kegg_sql_query, (kegg_genome, kegg_gene))
-                        data=cursor.fetchall()
-                        if len(data) == 1:
-                            kegg2uniref_mappings.append((data[0][0], uniref_uid, 'diamond identity ' + identity + '% mismatches ' + mismatches))
-                        elif len(data) > 1:
-                            print('ERROR: More than one entry for gene %s from genome %s: check database integrity'%(gene_id, genome_id))
-                            sys.exit(1)
-                        else:
-                            continue # skip this row if no such genes in the KEGG database
+                if float(identity) < identity_cutoff:
+                    if int(mismatches) > mismatch_cutoff:
+                        continue # skip if identity too low AND too many mismatches
+                cursor.execute(uniref_sql_query, (uniref_id,))
+                data = cursor.fetchall()
+                uniref_uid = 0
+                if len(data) == 1:
+                    uniref_uid = data[0][0]
+                elif len(data) > 1:
+                    print('ERROR: More than one entry for protein %s: check database integrity'%(uniref_id, ))
+                    sys.exit(1)
+                else:
+                    continue # skip this row if no such proteins in the UniRef database
+                cursor.execute(kegg_sql_query, (kegg_genome, kegg_gene))
+                data=cursor.fetchall()
+                if len(data) == 1:
+                    kegg2uniref_mappings.append((data[0][0], uniref_uid, 'diamond identity ' + identity + '% mismatches ' + mismatches))
+                elif len(data) > 1:
+                    print('ERROR: More than one entry for gene %s from genome %s: check database integrity'%(gene_id, genome_id))
+                    sys.exit(1)
+                else:
+                    continue # skip this row if no such genes in the KEGG database
             except  ValueError:
                 print ('Error in parsing line \"s%\"'%(line,))
         f.closed

@@ -38,7 +38,8 @@ def main():
     db_utils.attach_local_database(c, args.uniref_db, 'uniref_proteins')
 
     # Prepare database
-    print ('Create seed2kegg_mappings table...')
+    seed_data_util.drop_seed2kegg_mappings_table(c)
+    print ('Creating seed2kegg_mappings table...')
     seed_data_util.create_seed2kegg_mappings_table(c)
     data_analysis.fill_seed2kegg_mappings_table(c, args.diamond_out, 95.0, 5)
 

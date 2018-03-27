@@ -4,6 +4,7 @@ import datetime
 from collections import defaultdict
 import sqlite3
 from lib import seed_data_util
+from lib import db_utils
 
 '''
 This module contains all the functions for data analysis. 
@@ -168,16 +169,17 @@ def fill_seed2kegg_mappings_table(cursor, infile, identity_cutoff, mismatch_cuto
                 identity = line_tokens[2]
                 mismatches= line_tokens[4]
                 kegg_genome,kegg_gene = kegg_unique_id.split(':')
-                if float(identity) >= identity_cutoff:
-                    if int(mismatches) <= mismatch_cutoff:
-                        cursor.execute(kegg_sql_query, (kegg_genome, kegg_gene))
-                        data=cursor.fetchall()
-                        if len(data) == 1:
-                            seed2kegg_mappings.append((seed_data_util.get_gene_uid(cursor, seed_id), data[0][0], 'direct comparison', 'diamond identity ' + identity + '% mismatches ' + mismatches, ''))
-                        elif len(data) > 1:
-                            raise SystemExit('ERROR: More than one entry for gene %s from genome %s: check database integrity'%(gene_id, genome_id))
-                        else:
-                            continue # skip this row if no such gene in the KEGG database. 
+                if float(identity) < identity_cutoff:
+                    if int(mismatches) > mismatch_cutoff:
+                        continue
+                cursor.execute(kegg_sql_query, (kegg_genome, kegg_gene))
+                data=cursor.fetchall()
+                if len(data) == 1:
+                    seed2kegg_mappings.append((seed_data_util.get_gene_uid(cursor, seed_id), data[0][0], 'direct comparison', 'diamond identity ' + identity + '% mismatches ' + mismatches, ''))
+                elif len(data) > 1:
+                    raise SystemExit('ERROR: More than one entry for gene %s from genome %s: check database integrity'%(gene_id, genome_id))
+                else:
+                    continue # skip this row if no such gene in the KEGG database. It may happen if this gene is from Eukaryotes.
             except  ValueError:
                 print ('Error in parsing line: ' + line)
         f.closed
@@ -200,7 +202,89 @@ def report_database_statistics(cursor):
     cursor.execute('SELECT COUNT(DISTINCT seed_genes.uid) FROM seed_genes \
     JOIN seed_gene2role ON seed_genes.uid = seed_gene2role.seed_gene_uid')
     print('Total number of SEED genes assigned to functional roles:', cursor.fetchone()[0])
+
+def export_kegg_unmapped_proteins(cursor, infile, outfile_name):
+    sql_query='SELECT DISTINCT kegg_genomes.kegg_genome_id, kegg_genes.kegg_gene_id_primary \
+        FROM kegg_genes JOIN kegg_genomes ON kegg_genes.kegg_genome_uid=kegg_genomes.uid \
+        LEFT JOIN seed2kegg_mappings ON kegg_genes.uid=seed2kegg_mappings.kegg_uid \
+        LEFT JOIN seed_genes ON seed2kegg_mappings.seed_uid=seed_genes.uid \
+        WHERE seed_genes.uid IS NULL'
+    cursor.execute(sql_query)
+    data = cursor.fetchall()
+    prot_ids = {}
+    if data is None:
+        return
+    elif len(data) == 0:
+        return
+    else:
+        for entry in data:
+            prot_ids [entry[0] + ':' + entry[1]] = 1
+    flag = False
+    with open(outfile_name, 'w') as outfile:
+        with open(infile, 'r') as f:
+            for line in f:
+                if line.startswith('>'):
+                    line_tokens = line[1:].split(' ')
+                    if line_tokens[0] in prot_ids:
+                        flag = True
+                    else:
+                        flag = False
+                if flag == True:
+                    outfile.write(line)
+            f.closed
+        outfile.closed
+
+def import_collection_tsv(cursor, infile, collection_name, info, version):
+    insert_collection_sql_statement = 'INSERT INTO collections \
+        (collection_name, info, version) VALUES  (?, ?, ?)'
+    insert_func_sql_statement = 'INSERT INTO collection2function \
+        (collection_uid, function_uid, source_db, name, category) VALUES  (?, ?, ?, ?, ?)'
+    col_uid_sql_query = 'SELECT uid FROM collections WHERE \
+    collection_name = ? AND version = ?'
+
+    # check if new collection already exists
+    cursor.execute(col_uid_sql_query, (collection_name, version))
+    data = cursor.fetchone()
+    if data is not None:
+        raise SystemExit('Import ERROR: collection ' + collection_name + ' with version ' + version + ' already exists')
+
+    counter = 0
+    collection_uid = None
+    cursor.execute(insert_collection_sql_statement, (collection_name, info, version))
+    cursor.execute(col_uid_sql_query, (collection_name, version))
+    data = cursor.fetchone()
+    if data is None:
+        raise SystemExit('Import unsuccessful')
+    else:
+        collection_uid = data[0]
     
+    collection_data = []
+    with open(infile, 'r') as f:
+        for line in f:
+            if line.startswith('#'):
+                continue # skip comment lines
+            line = line.rstrip('\n\r')
+            line = line.replace("'", "''")
+            line_tokens = line.split('\t')
+            if len(line_tokens) == 5:
+                function_uid=''
+                if line_tokens[0] == 'SEED':
+                    function_uid = seed_data_util.get_role_uid(cursor, line_tokens[1])
+                elif line_tokens[0] == 'KEGG':
+                    cursor.execute('SELECT uid FROM kegg_orthologs WHERE ko_id=?',(line_tokens[1],))
+                    function_uid = cursor.fetchone()[0]
+                collection_data.append((collection_uid,data[0],line_tokens[0],line_tokens[2],line_tokens[3]))
+            else:
+                raise SystemExit ('Unexpected number of fields in line: ' + line)
+        f.closed
+    cursor.executemany(insert_func_sql_statement, collection_data)
+    db_utils.create_collection2function_index(cursor)
+    print (len(collection_data), ' functions imported into collection')
+
+    
+def get_collection_gene_list(cursor, collection_name):
+    pass
+
 
 if __name__=='__main__':
     print ('This module should not be executed as script.')
