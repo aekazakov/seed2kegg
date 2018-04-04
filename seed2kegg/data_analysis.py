@@ -3,8 +3,9 @@ import os,sys
 import datetime
 from collections import defaultdict
 import sqlite3
-from lib import seed_data_util
-from lib import db_utils
+from seed2kegg import seed_data_util
+from seed2kegg import kegg_data_util
+from seed2kegg import db_utils
 
 '''
 This module contains all the functions for data analysis. 
@@ -235,6 +236,8 @@ def export_kegg_unmapped_proteins(cursor, infile, outfile_name):
         outfile.closed
 
 def import_collection_tsv(cursor, infile, collection_name, info, version):
+    db_utils.delete_collection(cursor, collection_name, version)
+
     insert_collection_sql_statement = 'INSERT INTO collections \
         (collection_name, info, version) VALUES  (?, ?, ?)'
     insert_func_sql_statement = 'INSERT INTO collection2function \
@@ -273,7 +276,7 @@ def import_collection_tsv(cursor, infile, collection_name, info, version):
                 elif line_tokens[0] == 'KEGG':
                     cursor.execute('SELECT uid FROM kegg_orthologs WHERE ko_id=?',(line_tokens[1],))
                     function_uid = cursor.fetchone()[0]
-                collection_data.append((collection_uid,data[0],line_tokens[0],line_tokens[2],line_tokens[3]))
+                collection_data.append((collection_uid,function_uid,line_tokens[0],line_tokens[2],line_tokens[3]))
             else:
                 raise SystemExit ('Unexpected number of fields in line: ' + line)
         f.closed
@@ -282,9 +285,85 @@ def import_collection_tsv(cursor, infile, collection_name, info, version):
     print (len(collection_data), ' functions imported into collection')
 
     
-def get_collection_gene_list(cursor, collection_name):
-    pass
+def make_collection_gene_list(cursor, collection_name, version):
+    ret_val=defaultdict(dict) #ret_val[gene_id]['source']=source_db ret_val[gene_id]['func']=list of functions
+    function_list_sql_query = 'SELECT collection2function.function_uid, collection2function.source_db FROM collection2function \
+        JOIN collections ON collection2function.collection_uid=collections.uid \
+        WHERE collections.collection_name=? AND collections.version=?'
+    seed_genes_sql_query='SELECT seed_genes.seed_gene_id \
+        FROM seed_genes \
+        JOIN seed_gene2role ON seed_genes.uid=seed_gene2role.seed_gene_uid \
+        JOIN seed_functional_roles ON seed_gene2role.seed_role_uid=seed_functional_roles.uid \
+        WHERE seed_functional_roles.uid = ?'
+    kegg_genes_sql_query='SELECT kegg_genomes.kegg_genome_id||":"||kegg_genes.kegg_gene_id_primary\
+        FROM kegg_genes JOIN kegg_genomes ON kegg_genes.kegg_genome_uid=kegg_genomes.uid \
+        JOIN kegg_genes2ko ON kegg_genes.uid=kegg_genes2ko.kegg_gene_uid \
+        JOIN kegg_orthologs ON kegg_genes2ko.kegg_ko_uid=kegg_orthologs.uid \
+        LEFT JOIN seed2kegg_mappings ON kegg_genes.uid=seed2kegg_mappings.kegg_uid \
+        LEFT JOIN seed_genes ON seed2kegg_mappings.seed_uid=seed_genes.uid \
+        LEFT JOIN seed_gene2role ON seed_genes.uid=seed_gene2role.seed_gene_uid \
+        LEFT JOIN seed_functional_roles ON seed_gene2role.seed_role_uid=seed_functional_roles.uid \
+        WHERE seed_functional_roles.uid IS NULL AND kegg_orthologs.uid=?'
 
+    functions = defaultdict(list)
+    cursor.execute(function_list_sql_query, (collection_name, version))
+    function_data = cursor.fetchall()
+    #print(function_data)
+    if len(function_data) == 0:
+        print ('Collection not found or empty')
+        return ret_val
+    for function_entry in function_data:
+        functions [function_entry[0]] = function_entry[1]
+    for function in functions:
+        print('Processing function', function)
+        if functions[function] == 'SEED':
+            function_id = seed_data_util.get_role_id(cursor,function)
+            cursor.execute(seed_genes_sql_query, (function,))
+            gene_data = cursor.fetchall()
+            #print(gene_data)
+            if len(gene_data) > 0:
+                for gene_id in gene_data:
+                    if gene_id[0] in ret_val:
+                        ret_val[gene_id[0]]['func'].append(function_id)
+                    else:
+                        ret_val[gene_id[0]]['source']='SEED'
+                        ret_val[gene_id[0]]['func']=[function_id]
+        elif functions[function] == 'KEGG':
+            function_id = kegg_data_util.get_ko_id(cursor,function)
+            cursor.execute(kegg_genes_sql_query, (function,))
+            gene_data = cursor.fetchall()
+            #print(gene_data)
+            if len(gene_data) > 0:
+                for gene_id in gene_data:
+                    if gene_id[0] in ret_val:
+                        ret_val[gene_id[0]]['func'].append(function_id)
+                    else:
+                        ret_val[gene_id[0]]['source']='KEGG'
+                        ret_val[gene_id[0]]['func']=[function_id]
+        else:
+            raise SystemExit('Unknown data source ' + functions[function] + ' for function ' + function)
+    return ret_val
+    
+def export_collection_proteins(gene_dict, infile, outfile):
+    flag = False
+    with open(outfile, 'a') as of:
+        with open(infile, 'r') as f:
+            for line in f:
+                if line.startswith('>'):
+                    line = line.rstrip()
+                    line = line[1:]
+                    gene_id = line.split(' ')[0]
+                    if gene_id in gene_dict:
+                        flag = True
+                        of.write('>' + '|'.join(dict((el,0) for el in gene_dict[gene_id]['func']).keys()) + '_' + gene_id + '\n')
+                    else:
+                        flag = False
+                else:
+                    if flag == True:
+                        line = line.strip()
+                        of.write(line + '\n')
+            f.closed
+        of.closed
 
 if __name__=='__main__':
     print ('This module should not be executed as script.')

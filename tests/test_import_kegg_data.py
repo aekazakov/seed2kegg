@@ -2,9 +2,9 @@
 import os
 import sqlite3
 import unittest
-from context import lib
-from lib import db_utils
-from lib import kegg_data_util
+from context import seed2kegg
+from seed2kegg import db_utils
+from seed2kegg import kegg_data_util
 
 data_dir = '../test_data/'
 test_kegg_dir = '../test_data/test_kegg_dir/'

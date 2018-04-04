@@ -1,9 +1,9 @@
 #!/usr/bin/python
 import sys
 import argparse
-from context import lib
-from lib import db_utils
-from lib import data_analysis
+from context import seed2kegg
+from seed2kegg import db_utils
+from seed2kegg import data_analysis
 
 
 def get_args():

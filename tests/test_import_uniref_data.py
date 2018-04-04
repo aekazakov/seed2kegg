@@ -2,9 +2,9 @@
 import os
 import sqlite3
 import unittest
-from context import lib
-from lib import db_utils
-from lib import uniref_data_util
+from context import seed2kegg
+from seed2kegg import db_utils
+from seed2kegg import uniref_data_util
 
 data_dir = '../test_data'
 uniref_fasta_file = os.path.join(data_dir, 'test_uniref.faa')

@@ -3,9 +3,9 @@ import sys
 import os.path
 import sqlite3
 import argparse
-from context import lib
-from lib import db_utils
-from lib import seed_data_util
+from context import seed2kegg
+from seed2kegg import db_utils
+from seed2kegg import seed_data_util
 
 
 def get_args():

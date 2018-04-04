@@ -37,3 +37,13 @@ def create_collection2function_index(cursor):
     cursor.execute('CREATE INDEX IF NOT EXISTS `collection2function_functionuid_1` ON `collection2function` (`function_uid` ASC)')
     cursor.execute('CREATE INDEX IF NOT EXISTS `collection2function_sourcedb_1` ON `collection2function` (`source_db` ASC)')
 
+def delete_collection(cursor, collection_name, version):
+    col_uid_sql_query = 'SELECT uid FROM collections WHERE \
+    collection_name = ? AND version = ?'
+    cursor.execute(col_uid_sql_query, (collection_name, version))
+    data = cursor.fetchone()
+    if data is not None:
+        collection_uid = data[0]
+        cursor.execute('DELETE FROM collection2function WHERE collection_uid=?', (collection_uid,))
+        cursor.execute('DELETE FROM collections WHERE uid=?', (collection_uid,))
+    

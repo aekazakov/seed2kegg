@@ -1,7 +1,7 @@
 #!/usr/bin/python
 import os,sys
 import sqlite3
-from lib import db_utils
+from seed2kegg import db_utils
 
 '''
 This module contains all the functions for downloading KEGG data and
@@ -126,6 +126,11 @@ def create_kegg_genes2ko_index(cursor):
 def create_kegg2uniref_mappings_index(cursor):
     cursor.execute('CREATE UNIQUE INDEX `kegg2uniref_keggid_1` ON `kegg2uniref_mappings` (`kegg_uid` ASC)')
     cursor.execute('CREATE INDEX `kegg2uniref_unirefid_1` ON `kegg2uniref_mappings` (`uniref_uid` ASC)')
+
+def get_ko_id(cursor,uid):
+    cursor.execute('SELECT ko_id FROM kegg_orthologs WHERE uid=?',(uid,))
+    return cursor.fetchone()[0]
+
 
 def import_kegg_orthologs_list(cursor,ko_file):
     sql_query = 'INSERT INTO kegg_orthologs(ko_id,ko_name) VALUES (?, ?)'

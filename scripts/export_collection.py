@@ -5,17 +5,16 @@ from context import seed2kegg
 from seed2kegg import db_utils
 from seed2kegg import data_analysis
 
-
 def get_args():
-    desc = '''This script creates a collection of functions.
-    Databases with KEGG and SEED data would be prepared in advance.'''
+    desc = 'This script creates FASTA file with proteins from functional collection.'
     parser = argparse.ArgumentParser(description=desc)
     parser.add_argument('--seed_db', help='SEED sqlite DB path')
     parser.add_argument('--kegg_db', help='SEED sqlite DB path')
-    parser.add_argument('--infile', help='List of functions for collection (tsv)')
+    parser.add_argument('--kegg_prots', help='KEGG proteins in FASTA format')
+    parser.add_argument('--seed_prots', help='SEED proteins in FASTA format')
     parser.add_argument('--name', help='Collection name')
     parser.add_argument('--ver', help='Collection version')
-    parser.add_argument('--info', help='Collection info')
+    parser.add_argument('--outfile', help='Output file name')
     args = parser.parse_args()
     if len(sys.argv) == 1:
         parser.print_help()
@@ -30,10 +29,11 @@ def main():
     conn = db_utils.connect_local_database(args.seed_db)
     c = conn.cursor()
     db_utils.attach_local_database(c, args.kegg_db, 'kegg_data')
-    db_utils.create_collections_table(c)
-    db_utils.create_collection2function_table(c)
-    data_analysis.import_collection_tsv(c, args.infile, args.name, args.info, args.ver)
-    conn.commit()
+    print ('Finding genes...')
+    gene_collection = data_analysis.make_collection_gene_list(c, args.name, args.ver)
+    print(len(gene_collection), 'genes found. Writing output...')
+    data_analysis.export_collection_proteins(gene_collection,args.seed_prots,args.outfile)
+    data_analysis.export_collection_proteins(gene_collection,args.kegg_prots,args.outfile)
     conn.close()
     print ('done.')
         

@@ -3,10 +3,10 @@ import sys
 import os.path
 import sqlite3
 import argparse
-from context import lib
-from lib import db_utils
-from lib import kegg_data_util
-from lib import data_analysis
+from context import seed2kegg
+from seed2kegg import db_utils
+from seed2kegg import kegg_data_util
+from seed2kegg import data_analysis
 
 
 def get_args():

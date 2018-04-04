@@ -1,10 +1,10 @@
 #!/usr/bin/python
 import sys
 import argparse
-from context import lib
-from lib import db_utils
-from lib import seed_data_util
-from lib import data_analysis
+from context import seed2kegg
+from seed2kegg import db_utils
+from seed2kegg import seed_data_util
+from seed2kegg import data_analysis
 
 
 def get_args():
@@ -41,6 +41,7 @@ def main():
     seed_data_util.drop_seed2kegg_mappings_table(c)
     print ('Creating seed2kegg_mappings table...')
     seed_data_util.create_seed2kegg_mappings_table(c)
+    print ('Populating seed2kegg_mappings table...')
     data_analysis.fill_seed2kegg_mappings_table(c, args.diamond_out, 95.0, 5)
 
     # Write changes and close database

@@ -1,7 +1,7 @@
 #!/usr/bin/python
 
 import sqlite3
-from lib import db_utils
+from seed2kegg import db_utils
 
 '''
 This module contains all the functions needed for load UniRef data into sqlite database. 

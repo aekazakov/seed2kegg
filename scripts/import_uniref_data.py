@@ -1,11 +1,10 @@
 #!/usr/bin/python
 import sys
 import os.path
-import sqlite3
 import argparse
-from context import lib
-from lib import db_utils
-from lib import uniref_data_util
+from context import seed2kegg
+from seed2kegg import db_utils
+from seed2kegg import uniref_data_util
 
 
 def get_args():
